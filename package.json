@@ -4,8 +4,7 @@
   "main": "lib/index.js",
   "module": "lib/index.esm.js",
   "scripts": {
-    "build": "rollup -c",
-    "publish": "npm publish --access public"
+    "build": "rollup -c"
   },
   "author": "hexly",
   "license": "ISC",
