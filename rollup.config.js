@@ -11,10 +11,9 @@ export default [
   {
     input: './src/index.ts',
     output: {
-      exports: "auto",
       file: './lib/index.js',
       format: 'cjs',
     },
     plugins: [typescript()],
   },
-]
+] 
