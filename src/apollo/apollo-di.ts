@@ -1,20 +1,18 @@
 
+import 'reflect-metadata'
 import fs from 'fs/promises'
 import glob from 'glob'
 import * as _ from 'lodash'
 import { Application } from 'express'
-// import { GraphQLResolverMap, modulesFromSDL, GraphQLSchemaModule } from 'apollo-graphql'
 import { GraphQLSchemaModule } from 'apollo-graphql'
 import { gql as GQL, ApolloServer, ApolloServerExpressConfig, } from 'apollo-server-express'
-// import { GraphQLResolveInfo, GraphQLAbstractType, DocumentNode, DefinitionNode, NameNode, GraphQLSchema, visit, GraphQLTypeResolver } from 'graphql'
 import { GraphQLResolveInfo, GraphQLAbstractType } from 'graphql'
-// import { makeExecutableSchema } from 'graphql-tools'
 
 
 import {
-  Container, service as service, REGISTER_AS_META_KEY,
+  Container, service, REGISTER_AS_META_KEY,
   DispatchEvent, DispatchEventHof, DispatchPredicate, Handler, HandlerDeclaration, Metadata, HandlerRegistry
-} from "@dits/dits"
+} from "@dits/dits/lib/di/di"
 import { buildSubgraphSchema } from '@apollo/federation'
 import { ApolloServerPluginInlineTraceDisabled } from 'apollo-server-core'
 

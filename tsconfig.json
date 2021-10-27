@@ -13,7 +13,7 @@
       // "jest",
       // "reflect-metadata",
       "express",
-      "@dits/dits",
+      // "@dits/dits",
     ],
     "outDir": "lib",
     "target": "esnext",

@@ -4,7 +4,7 @@
   "main": "lib/index.js",
   "module": "lib/index.esm.js",
   "scripts": {
-    "build": "rollup -c"
+    "build": "tsc && rollup -c"
   },
   "author": "hexly",
   "license": "ISC",
@@ -26,7 +26,7 @@
     "lib": "lib"
   },
   "peerDependencies": {
-    "@dits/dits": "^0.0.4"
+    "@dits/dits": "^0.0.7"
   },
   "dependencies": {
     "@apollo/federation": "^0.33.3",
