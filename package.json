@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "main": "lib/index.js",
   "module": "lib/index.esm.js",
+  "type": "commonjs",
   "scripts": {
     "build": "tsc && rollup -c"
   },
