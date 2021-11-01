@@ -16,12 +16,33 @@ import {
 import { buildSubgraphSchema } from '@apollo/federation'
 import { ApolloServerPluginInlineTraceDisabled } from 'apollo-server-core'
 
-let reqIdx = 1
-export async function createServer(app: Application, container: Container, config?: ApolloServerExpressConfig) {
-  const registry: HandlerRegistry | undefined = container.get(HandlerRegistry)
-  if (!registry) {
-    throw new Error('Could not initialize press: no zone handler registry found; are you sure you are running inside `initApp` handler?')
+
+
+const log = service.logger('dits_apollo')
+
+export const GQL_KEY = Symbol('dits:apollo')
+export class GQLEvent<A, P, CTX> extends DispatchEvent {
+
+  constructor(
+    public path: string,
+    public args: A | undefined,
+    public parent: P | undefined,
+    public context: CTX,
+    public info: GraphQLResolveInfo,
+  ) {
+    super(GQL_KEY)
   }
+}
+
+
+let reqIdx = 1
+// export function createServer<HR>(app: Application, container: Container, registry: HandlerRegistry, config?: ApolloServerExpressConfig) {
+export async function createServer<HR>(app: Application, registry: HandlerRegistry, config?: ApolloServerExpressConfig) {
+
+  // const registry: HandlerRegistry | undefined = service.container?.get(HandlerRegistry)
+  // if (!registry) {
+  //   throw new Error('Could not initialize press: no zone handler registry found; are you sure you are running inside `initApp` handler?')
+  // }
 
   const gqlSearchPath = process.env.GQL_SEARCH_PATH || './src/'
   const expression = `${gqlSearchPath}**/*.gql`
@@ -35,12 +56,18 @@ export async function createServer(app: Application, container: Container, confi
       })
   )).join('\n')
 
+
+  const declarations = registry.getDeclarations(GQLEvent)
+
+  // @ts-ignore
+  log.info('wtf man', [...registry.handlers.keys()], declarations)
   // set the path on resolvers 
   const resolvers: any = {}
-  registry.getDeclarations(GQLEvent).forEach(hr => {
+  declarations.forEach(hr => {
+    log.info('FINDME', hr)
     const { path } = hr.metadata[RESOLVER_META_KEY] as { path: string }
     if (!path) {
-      console.warn('Bad HandlerDeclaration: ', hr)
+      log.warn('Bad HandlerDeclaration: ', hr)
       throw new Error('Could not determine correct metadata for Handler')
     }
     const existing = _.get(resolvers, path)
@@ -49,6 +76,8 @@ export async function createServer(app: Application, container: Container, confi
     }
     _.set(resolvers, path, createHandlerResolver({ path }, hr))
   })
+
+
 
   const schemata: GraphQLSchemaModule = {
     typeDefs: GQL(typeDefs),
@@ -70,29 +99,16 @@ export async function createServer(app: Application, container: Container, confi
     plugins
   });
 
-  // console.log('server', server)
+  // log.info('server', server)
 
 
   await server.start()
 
-  server.applyMiddleware({ app, })
+  server.applyMiddleware({ app })
+
 }
 
 
-
-export const GQL_KEY = Symbol('dits:apollo')
-export class GQLEvent<A, P, CTX> extends DispatchEvent {
-
-  constructor(
-    public path: string,
-    public args: A | undefined,
-    public parent: P | undefined,
-    public context: CTX,
-    public info: GraphQLResolveInfo,
-  ) {
-    super(GQL_KEY)
-  }
-}
 
 
 export type ResolverPredicateSettings = {
@@ -140,7 +156,7 @@ const createHandlerResolver: HandlerResolver =
           return result
         }) as RT
       } catch (err) {
-        console.warn('failed to do the zone thing', err)
+        log.warn('failed to do the zone thing', err)
         throw err
       }
     }
