@@ -8,9 +8,8 @@ import { gql as GQL, ApolloServer, ApolloServerExpressConfig, } from 'apollo-ser
 import { GraphQLResolveInfo, GraphQLAbstractType } from 'graphql'
 
 import {
-  Container, REGISTER_AS_META_KEY,
   DispatchEvent, DispatchEventHof, DispatchPredicate, Handler, HandlerDeclaration, Metadata, HandlerRegistry
-} from "@dits/dits/lib/di/di"
+} from "@dits/dits"
 
 
 import service from '@dits/dits'
@@ -22,7 +21,7 @@ import { ApolloServerPluginInlineTraceDisabled } from 'apollo-server-core'
 
 const log = service.logger('dits_apollo')
 
-export const GQL_KEY = Symbol('dits:apollo')
+export const GQL_KEY = Symbol.for('dits_apollo')
 export class GQLEvent<A, P, CTX> extends DispatchEvent {
 
   constructor(
@@ -139,7 +138,7 @@ const createHandlerResolver: HandlerResolver =
   ({ path }, hd) => {
     const resolver = async <A, P, CTX, RT>(parent: P, args: A | undefined, context: CTX, info: GraphQLResolveInfo, absType: GraphQLAbstractType) => {
       const e = new GQLEvent(path, args, parent, context, info)
-      const container = new Container(service.container!)
+      const container = service.Container()
       const principal = await service.context?.authenticate(e)
       const zone = service.zone!.fork({
         name: `gql-${reqIdx++}`,
@@ -163,18 +162,13 @@ const createHandlerResolver: HandlerResolver =
   }
 
 
-export const RESOLVER_META_KEY = Symbol("resolver");
+export const RESOLVER_META_KEY = Symbol.for("dits_resolver");
 export function Resolver(path: string, ...predicates: DispatchPredicate<GQLEvent<unknown, unknown, any>>[]) {
-
-  //@ts-ignore 
-  global.foobar1 = service
-  log.info('naw?', path)
+  // global.foobar1 = service
+  // log.info('naw?', path)
   return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    log.info('is it resolved?', path)
     service.onPreInitialization(async () => {
-      // @ts-ignore
-      log.info('IT IS BEING REOSLVED', path, service.zone?.name, Zone.current.name, [...service.handlers.handlers.keys()])
-      Metadata.defineMetadata(REGISTER_AS_META_KEY, GQLEvent, target, propertyKey)
+      // Metadata.defineMetadata(REGISTER_AS_META_KEY, GQLEvent, target, propertyKey)
       Metadata(RESOLVER_META_KEY, { path })(target, propertyKey)
       Handler(...predicates)(target, propertyKey, descriptor)
     })

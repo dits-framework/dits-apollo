@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
+    "build:clean": "rm -rf lib node_modules package-lock.json; npm i --only=prod; npm run build",
     "release": "echo 'Latest tag:' && git describe; read -p 'Version number?: ' VERSION; git add -A; git commit -am 'builds'; git push; git tag -a $VERSION -m VERSION; git push --tags"
   },
   "author": "hexly",
@@ -21,12 +22,13 @@
     "lib": "lib"
   },
   "peerDependencies": {
-    "@apollo/federation": ">= 0.33.x",
-    "@dits/dits": ">= 0.0.22",
+    "@apollo/federation": "0.33.3",
+    "@dits/dits": ">= 0.0.26",
     "@types/express": "^4.17.13",
     "@types/glob": "^7.2.0",
     "@types/jest": "^27.0.2",
     "@types/lodash": "^4.14.176",
+    "@types/node": ">= 16.11.x",
     "@types/reflect-metadata": "^0.1.0",
     "apollo-graphql": ">= 0.9.x",
     "apollo-server-core": ">= 3.4.x",
@@ -36,6 +38,9 @@
     "graphql-tools": ">= 8.2.x",
     "lodash": ">= 4.17.2x",
     "tslib": ">= 1.14.x"
+  },
+  "dependencies": {
+    "@apollo/subgraph": "0.1.2"
   },
   "description": ""
 }
