@@ -1,4 +1,3 @@
-
 import 'reflect-metadata'
 import fs from 'fs/promises'
 import glob from 'glob'
@@ -8,11 +7,14 @@ import { GraphQLSchemaModule } from 'apollo-graphql'
 import { gql as GQL, ApolloServer, ApolloServerExpressConfig, } from 'apollo-server-express'
 import { GraphQLResolveInfo, GraphQLAbstractType } from 'graphql'
 
-
 import {
-  Container, service, REGISTER_AS_META_KEY,
+  Container, REGISTER_AS_META_KEY,
   DispatchEvent, DispatchEventHof, DispatchPredicate, Handler, HandlerDeclaration, Metadata, HandlerRegistry
 } from "@dits/dits/lib/di/di"
+
+
+import service from '@dits/dits'
+
 import { buildSubgraphSchema } from '@apollo/federation'
 import { ApolloServerPluginInlineTraceDisabled } from 'apollo-server-core'
 
@@ -59,12 +61,9 @@ export async function createServer<HR>(app: Application, registry: HandlerRegist
 
   const declarations = registry.getDeclarations(GQLEvent)
 
-  // @ts-ignore
-  log.info('wtf man', [...registry.handlers.keys()], declarations)
   // set the path on resolvers 
   const resolvers: any = {}
   declarations.forEach(hr => {
-    log.info('FINDME', hr)
     const { path } = hr.metadata[RESOLVER_META_KEY] as { path: string }
     if (!path) {
       log.warn('Bad HandlerDeclaration: ', hr)
@@ -166,9 +165,18 @@ const createHandlerResolver: HandlerResolver =
 
 export const RESOLVER_META_KEY = Symbol("resolver");
 export function Resolver(path: string, ...predicates: DispatchPredicate<GQLEvent<unknown, unknown, any>>[]) {
+
+  //@ts-ignore 
+  global.foobar1 = service
+  log.info('naw?', path)
   return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    Metadata.defineMetadata(REGISTER_AS_META_KEY, GQLEvent, target, propertyKey)
-    Metadata(RESOLVER_META_KEY, { path })(target, propertyKey)
-    Handler(...predicates)(target, propertyKey, descriptor)
+    log.info('is it resolved?', path)
+    service.onPreInitialization(async () => {
+      // @ts-ignore
+      log.info('IT IS BEING REOSLVED', path, service.zone?.name, Zone.current.name, [...service.handlers.handlers.keys()])
+      Metadata.defineMetadata(REGISTER_AS_META_KEY, GQLEvent, target, propertyKey)
+      Metadata(RESOLVER_META_KEY, { path })(target, propertyKey)
+      Handler(...predicates)(target, propertyKey, descriptor)
+    })
   }
 }
