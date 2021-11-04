@@ -5,10 +5,10 @@ import * as _ from 'lodash'
 import { Application } from 'express'
 import { GraphQLSchemaModule } from 'apollo-graphql'
 import { gql as GQL, ApolloServer, ApolloServerExpressConfig, } from 'apollo-server-express'
-import { GraphQLResolveInfo, GraphQLAbstractType } from 'graphql'
+import { GraphQLResolveInfo, GraphQLAbstractType, formatError, GraphQLFormattedError, GraphQLError } from 'graphql'
 
 import {
-  DispatchEvent, DispatchEventHof, DispatchPredicate, Handler, HandlerDeclaration, Metadata, HandlerRegistry
+  DispatchEvent, DispatchEventHof, DispatchPredicate, Handler, HandlerDeclaration, Metadata, HandlerRegistry, SecurityContext
 } from "@dits/dits"
 
 
@@ -93,7 +93,18 @@ export async function createServer<HR>(app: Application, registry: HandlerRegist
     // tracing: process.env.HX_GRAPHQL_TRACING === 'true',
     introspection: process.env.HX_GRAPHQL_INTROSPECTION_DISABLED === 'true' ? false : true,
     schema,
+    formatError(error: GraphQLError) {
+      log.warn('GraphQL Error', error)
+      return formatError(error)
+    },
     ...config,
+    async context(express: any = {}) {
+      let context = { express: { ...express, app } } as any
+      if (config?.context && config.context instanceof Function) {
+        context = await config.context(context)
+      }
+      return context
+    },
     plugins
   });
 
@@ -140,6 +151,8 @@ const createHandlerResolver: HandlerResolver =
       const e = new GQLEvent(path, args, parent, context, info)
       const container = service.Container()
       const principal = await service.context?.authenticate(e)
+      const sc = new SecurityContext(principal)
+      container.register(SecurityContext, sc)
       const zone = service.zone!.fork({
         name: `gql-${reqIdx++}`,
         properties: {
