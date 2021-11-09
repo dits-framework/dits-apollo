@@ -1,6 +1,4 @@
 import '@dits/dits'
-import { GQLEvent, Resolver, ResolverPredicate, createServer } from "./apollo/apollo-di";
 
-export {
-  GQLEvent, Resolver, ResolverPredicate, createServer
-}
+export { GQLEvent, Resolver, ResolverPredicate, createServer } from "./apollo/apollo-di";
+export type { DitsApolloConfig, DitsApolloSchema, DitsApolloSchemaFilter } from "./apollo/apollo-di";

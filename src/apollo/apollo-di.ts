@@ -36,9 +36,21 @@ export class GQLEvent<A, P, CTX> extends DispatchEvent {
 }
 
 
+export type DitsApolloSchema = {
+  typeDefs: string,
+  resolvers: any
+}
+export interface DitsApolloSchemaFilter {
+  (schema: DitsApolloSchema): DitsApolloSchema
+}
+export type DitsApolloConfig = {
+  apollo?: ApolloServerExpressConfig,
+  schemaFilters?: DitsApolloSchemaFilter[]
+}
+
 let reqIdx = 1
 // export function createServer<HR>(app: Application, container: Container, registry: HandlerRegistry, config?: ApolloServerExpressConfig) {
-export async function createServer<HR>(app: Application, registry: HandlerRegistry, config?: ApolloServerExpressConfig) {
+export async function createServer<HR>(app: Application, registry: HandlerRegistry, config?: DitsApolloConfig) {
 
   // const registry: HandlerRegistry | undefined = service.container?.get(HandlerRegistry)
   // if (!registry) {
@@ -74,20 +86,26 @@ export async function createServer<HR>(app: Application, registry: HandlerRegist
     }
     _.set(resolvers, path, createHandlerResolver({ path }, hr))
   })
+  // log.info('shape of resolvers is', resolvers)
 
 
+  const filters: DitsApolloSchemaFilter[] = (config?.schemaFilters || [])
+  const templateSchema = filters.reduce((s, f) => f(s), { typeDefs, resolvers } as DitsApolloSchema)
 
   const schemata: GraphQLSchemaModule = {
-    typeDefs: GQL(typeDefs),
-    resolvers
+    typeDefs: GQL(templateSchema.typeDefs),
+    resolvers: templateSchema.resolvers
   }
 
 
+  const apollo = config?.apollo || {}
   const schema = buildSubgraphSchema(schemata)
   const plugins = [
-    ...(config?.plugins || []),
+    ...(apollo?.plugins || []),
     ApolloServerPluginInlineTraceDisabled()
   ]
+
+
   const server: ApolloServer = new ApolloServer({
     debug: process.env.HX_GRAPHQL_DEBUG === 'true',
     // tracing: process.env.HX_GRAPHQL_TRACING === 'true',
@@ -97,11 +115,11 @@ export async function createServer<HR>(app: Application, registry: HandlerRegist
       log.warn('GraphQL Error', error)
       return formatError(error)
     },
-    ...config,
+    ...apollo,
     async context(express: any = {}) {
       let context = { express: { ...express, app } } as any
-      if (config?.context && config.context instanceof Function) {
-        context = await config.context(context)
+      if (apollo?.context && apollo.context instanceof Function) {
+        context = await apollo.context(context)
       }
       return context
     },
@@ -161,14 +179,17 @@ const createHandlerResolver: HandlerResolver =
           principal
         }
       })
+      let result
       try {
         return await zone.run(async () => {
-          const result = await hd.handler(e)
+          result = await hd.handler(e)
           return result
         }) as RT
       } catch (err) {
         log.warn('failed to do the zone thing', err)
         throw err
+      } finally {
+        // log.info('returned?', e.path, result)
       }
     }
     return resolver
