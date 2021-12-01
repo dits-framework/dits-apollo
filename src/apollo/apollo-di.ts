@@ -1,3 +1,4 @@
+import 'zone.js'
 import 'reflect-metadata'
 import fs from 'fs/promises'
 import glob from 'glob'
@@ -8,20 +9,17 @@ import { gql as GQL, ApolloServer, ApolloServerExpressConfig, } from 'apollo-ser
 import { GraphQLResolveInfo, GraphQLAbstractType, formatError, GraphQLFormattedError, GraphQLError } from 'graphql'
 
 import {
-  DispatchEvent, DispatchEventHof, DispatchPredicate, Handler, HandlerDeclaration, Metadata, HandlerRegistry, SecurityContext
+  DispatchEvent, DispatchPredicate, Handler, HandlerDeclaration, HandlerRegistry, SecurityContext, Logger, Container, Authenticator, ANONYMOUS, Service
 } from "@dits/dits"
-
-
-import service from '@dits/dits'
 
 import { buildSubgraphSchema } from '@apollo/federation'
 import { ApolloServerPluginInlineTraceDisabled } from 'apollo-server-core'
+import { DispatchEventKey } from '@dits/dits/lib/dispatch/dispatch'
 
 
 
-const log = service.logger('dits_apollo')
+const log = Logger('dits_apollo')
 
-export const GQL_KEY = Symbol.for('dits_apollo')
 export class GQLEvent<A, P, CTX> extends DispatchEvent {
 
   constructor(
@@ -31,7 +29,7 @@ export class GQLEvent<A, P, CTX> extends DispatchEvent {
     public context: CTX,
     public info: GraphQLResolveInfo,
   ) {
-    super(GQL_KEY)
+    super('graphql')
   }
 }
 
@@ -138,19 +136,19 @@ export async function createServer<HR>(app: Application, registry: HandlerRegist
 
 
 
-export type ResolverPredicateSettings = {
-  path: string
-}
+// export type ResolverPredicateSettings = {
+//   path: string
+// }
 
-export const ResolverPredicate: DispatchEventHof<GQLEvent<unknown, unknown, any>> = (path: string) => {
-  const pred = <A, P, CTX>(e: GQLEvent<A, P, CTX>, declaration: HandlerDeclaration<GQLEvent<A, P, CTX>>) => {
-    return true
-  }
+// export const ResolverPredicate: DispatchEventHof<GQLEvent<unknown, unknown, any>> = (path: string) => {
+//   const pred = <A, P, CTX>(e: GQLEvent<A, P, CTX>, declaration: HandlerDeclaration<GQLEvent<A, P, CTX>>) => {
+//     return true
+//   }
 
-  const settings: ResolverPredicateSettings = { path }
-  Reflect.defineMetadata('gql_resolver', settings, pred)
-  return pred
-}
+//   const settings: ResolverPredicateSettings = { path }
+//   Reflect.defineMetadata('gql_resolver', settings, pred)
+//   return pred
+// }
 
 
 
@@ -167,17 +165,17 @@ const createHandlerResolver: HandlerResolver =
   ({ path }, hd) => {
     const resolver = async <A, P, CTX, RT>(parent: P, args: A | undefined, context: CTX, info: GraphQLResolveInfo, absType: GraphQLAbstractType) => {
       const e = new GQLEvent(path, args, parent, context, info)
-      const container = service.Container()
-      const principal = await service.context?.authenticate(e)
+
+      const service = Service.fromZone()
+      const container = Container.fromZone()
+      const authenticator = container.get<Authenticator>(Authenticator)
+      const principal = authenticator ? await authenticator.authenticate(e) : ANONYMOUS
       const sc = new SecurityContext(principal)
-      container.register(SecurityContext, sc)
-      const zone = service.zone!.fork({
-        name: `gql-${reqIdx++}`,
-        properties: {
-          rootEvent: e,
-          container,
-          principal
-        }
+      container.provide(SecurityContext, sc)
+
+      const zone = service.fork(`gql-${reqIdx++}`, {
+        rootEvent: e,
+        principal
       })
       let result
       try {
@@ -201,10 +199,13 @@ export function Resolver(path: string, ...predicates: DispatchPredicate<GQLEvent
   // global.foobar1 = service
   // log.info('naw?', path)
   return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    service.onPreInitialization(async () => {
-      // Metadata.defineMetadata(REGISTER_AS_META_KEY, GQLEvent, target, propertyKey)
-      Metadata(RESOLVER_META_KEY, { path })(target, propertyKey)
-      Handler(...predicates)(target, propertyKey, descriptor)
-    })
+    // service.onPreInitialization(async () => {
+    // Metadata.defineMetadata(REGISTER_AS_META_KEY, GQLEvent, target, propertyKey)
+
+
+    // Metadata(RESOLVER_META_KEY, { path })(target, propertyKey)
+    Reflect.defineMetadata(RESOLVER_META_KEY, { path }, target.constructor)
+    Handler(GQLEvent, ...predicates)(target, propertyKey, descriptor)
+    // })
   }
 }
