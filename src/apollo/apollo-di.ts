@@ -1,4 +1,4 @@
-import 'zone.js'
+
 import 'reflect-metadata'
 import fs from 'fs/promises'
 import glob from 'glob'
@@ -48,7 +48,8 @@ export type DitsApolloConfig = {
 
 let reqIdx = 1
 // export function createServer<HR>(app: Application, container: Container, registry: HandlerRegistry, config?: ApolloServerExpressConfig) {
-export async function createServer<HR>(app: Application, registry: HandlerRegistry, config?: DitsApolloConfig) {
+export async function createServer<HR>(app: Application, container: Container, config?: DitsApolloConfig) {
+  const registry = container.handlers as HandlerRegistry
 
   // const registry: HandlerRegistry | undefined = service.container?.get(HandlerRegistry)
   // if (!registry) {
