@@ -181,7 +181,7 @@ const createHandlerResolver: HandlerResolver =
       const sc = new SecurityContext(principal)
       container.provide(SecurityContext, sc)
 
-      const zone = service.fork(`gql-${reqIdx++}`, {
+      const zone = await service.fork(`gql-${reqIdx++}`, {
         rootEvent: e,
         principal
       })
