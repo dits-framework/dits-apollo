@@ -74,9 +74,6 @@ export async function createServer<HR>(app: Application, container: Container, c
   // set the path on resolvers 
   const resolvers: any = {}
   declarations.forEach(hr => {
-    // const { path } = hr.metadata[RESOLVER_META_KEY] as { path: string }
-    const { path } = Reflect.getMetadata(RESOLVER_META_KEY, hr.target.constructor) || {}
-
     hr.metadata = hr.metadata || {}
     hr.metadata.resolvers = (Reflect.getMetadata(RESOLVER_META_KEY, hr.target.constructor) || []) as ResolverMeta[]
 
@@ -178,8 +175,6 @@ const createHandlerResolver: HandlerResolver =
       const container = Container.fromZone()
       const authenticator = container.get<Authenticator>(Authenticator)
       const principal = authenticator ? await authenticator.authenticate(e) : ANONYMOUS
-      const sc = new SecurityContext(principal)
-      container.provide(SecurityContext, sc)
 
       const zone = await service.fork(`gql-${reqIdx++}`, {
         rootEvent: e,
@@ -188,6 +183,12 @@ const createHandlerResolver: HandlerResolver =
       let result
       try {
         return await zone.run(async () => {
+
+          const child = Container.fromZone();
+          const sc = new SecurityContext(principal)
+          child.provide(SecurityContext, sc)
+          child.provide(GQLEvent, e)
+
           result = await targetResolver(e)
           return result
         }) as RT
