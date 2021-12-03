@@ -74,16 +74,23 @@ export async function createServer<HR>(app: Application, container: Container, c
   // set the path on resolvers 
   const resolvers: any = {}
   declarations.forEach(hr => {
-    const { path } = hr.metadata[RESOLVER_META_KEY] as { path: string }
-    if (!path) {
-      log.warn('Bad HandlerDeclaration: ', hr)
-      throw new Error('Could not determine correct metadata for Handler')
-    }
-    const existing = _.get(resolvers, path)
-    if (existing) {
-      throw new Error(`Resolver Path ${path} already defined with ${existing}; could not set ${hr.target} `)
-    }
-    _.set(resolvers, path, createHandlerResolver({ path }, hr))
+    // const { path } = hr.metadata[RESOLVER_META_KEY] as { path: string }
+    const { path } = Reflect.getMetadata(RESOLVER_META_KEY, hr.target.constructor) || {}
+
+    hr.metadata = hr.metadata || {}
+    hr.metadata.resolvers = (Reflect.getMetadata(RESOLVER_META_KEY, hr.target.constructor) || []) as ResolverMeta[]
+
+    hr.metadata.resolvers.forEach(({ path, method }: ResolverMeta) => {
+      if (!path) {
+        log.warn(`Bad HandlerDeclaration ${path} for resolver function ${method} on ${hr.target}; declaration:`, hr);
+        throw new Error('Could not determine correct metadata for Handler');
+      }
+      const existing = _.get(resolvers, path);
+      if (existing) {
+        throw new Error(`Resolver Path ${path} already defined with ${existing}; could not set ${hr.target} `);
+      }
+      _.set(resolvers, path, createHandlerResolver({ path }, hr, hr.target[method]));
+    })
   })
   // log.info('shape of resolvers is', resolvers)
 
@@ -154,7 +161,7 @@ export async function createServer<HR>(app: Application, container: Container, c
 
 
 
-type HandlerResolver = <A, P, CTX, RT>({ path }: { path: string }, hd: HandlerDeclaration<GQLEvent<A, P, CTX>>) =>
+type HandlerResolver = <A, P, CTX, RT>({ path }: { path: string }, hd: HandlerDeclaration<GQLEvent<A, P, CTX>>, targetResolver: Function) =>
   (parent: P,
     args: A | undefined,
     context: CTX,
@@ -163,7 +170,7 @@ type HandlerResolver = <A, P, CTX, RT>({ path }: { path: string }, hd: HandlerDe
   ) => Promise<RT>
 
 const createHandlerResolver: HandlerResolver =
-  ({ path }, hd) => {
+  ({ path }, hd, targetResolver) => {
     const resolver = async <A, P, CTX, RT>(parent: P, args: A | undefined, context: CTX, info: GraphQLResolveInfo, absType: GraphQLAbstractType) => {
       const e = new GQLEvent(path, args, parent, context, info)
 
@@ -181,7 +188,7 @@ const createHandlerResolver: HandlerResolver =
       let result
       try {
         return await zone.run(async () => {
-          result = await hd.handler(e)
+          result = await targetResolver(e)
           return result
         }) as RT
       } catch (err) {
@@ -195,18 +202,13 @@ const createHandlerResolver: HandlerResolver =
   }
 
 
+type ResolverMeta = { path: string, target: any, method: string }
 export const RESOLVER_META_KEY = Symbol.for("dits_resolver");
 export function Resolver(path: string, ...predicates: DispatchPredicate<GQLEvent<unknown, unknown, any>>[]) {
-  // global.foobar1 = service
-  // log.info('naw?', path)
   return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    // service.onPreInitialization(async () => {
-    // Metadata.defineMetadata(REGISTER_AS_META_KEY, GQLEvent, target, propertyKey)
-
-
-    // Metadata(RESOLVER_META_KEY, { path })(target, propertyKey)
-    Reflect.defineMetadata(RESOLVER_META_KEY, { path }, target.constructor)
+    const resolvers: ResolverMeta[] = Reflect.getMetadata(RESOLVER_META_KEY, target.constructor) || []
+    resolvers.push({ path, target, method: propertyKey })
+    Reflect.defineMetadata(RESOLVER_META_KEY, resolvers, target.constructor);
     Handler(GQLEvent, ...predicates)(target, propertyKey, descriptor)
-    // })
   }
 }
