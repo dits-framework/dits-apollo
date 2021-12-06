@@ -82,10 +82,11 @@ export async function createServer<HR>(app: Application, container: Container, c
         log.warn(`Bad HandlerDeclaration ${path} for resolver function ${method} on ${hr.target}; declaration:`, hr);
         throw new Error('Could not determine correct metadata for Handler');
       }
-      const existing = _.get(resolvers, path);
-      if (existing) {
-        throw new Error(`Resolver Path ${path} already defined with ${existing}; could not set ${hr.target} `);
-      }
+      // TODO fix definitions so that we don't duplicate handlers + resolvers
+      // const existing = _.get(resolvers, path);
+      // if (existing) {
+      //   throw new Error(`Resolver Path ${path} already defined with ${existing}; could not set ${hr.target} `);
+      // }
       _.set(resolvers, path, createHandlerResolver({ path }, hr, hr.target[method]));
     })
   })
