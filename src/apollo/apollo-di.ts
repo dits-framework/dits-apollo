@@ -187,8 +187,8 @@ const createHandlerResolver: HandlerResolver =
 
           const child = Container.fromZone();
           const sc = new SecurityContext(principal)
-          child.provide(SecurityContext, sc)
-          child.provide(GQLEvent, e)
+          child.provide(SecurityContext, sc, true)
+          child.provide(GQLEvent, e, true)
 
           result = await targetResolver(e)
           return result
