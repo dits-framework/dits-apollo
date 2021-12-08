@@ -4,8 +4,8 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "build:watch": "tsc --watch",
+    "build": "tsc -p tsconfig.build.json",
+    "build:watch": "tsc -p tsconfig.build.json --watch",
     "build:clean": "rm -rf lib node_modules package-lock.json; npm i --only=prod; npm run build",
     "release": "echo 'Latest tag:' && git describe; read -p 'Version number?: ' VERSION; git add -A; git commit -am 'builds'; git push; git tag -a $VERSION -m VERSION; git push --tags"
   },
