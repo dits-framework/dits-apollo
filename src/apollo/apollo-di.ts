@@ -174,7 +174,7 @@ const createHandlerResolver: HandlerResolver =
 
       const service = Service.fromZone()
       const container = Container.fromZone()
-      const authenticator = container.get<Authenticator>(Authenticator)
+      const authenticator: Authenticator | undefined = container.get(Authenticator)
       const principal = authenticator ? await authenticator.authenticate(e) : ANONYMOUS
 
       const zone = await service.fork(`gql-${reqIdx++}`, {
