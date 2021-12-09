@@ -193,8 +193,8 @@ const createHandlerResolver: HandlerResolver =
           child.provide(SecurityContext, sc, true)
           child.provide(GQLEvent, e, true)
 
-
-          result = await targetResolver(e)
+          // automatically injected args!
+          result = await targetResolver()
           return result
         }) as RT
       } catch (err) {
