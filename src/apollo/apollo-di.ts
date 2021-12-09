@@ -186,12 +186,13 @@ const createHandlerResolver: HandlerResolver =
         return await zone.run(async () => {
           const child = Container.fromZone();
 
-          // seems like this should come later, but causes issues if so
-          await child.initialize('web', 'graphql')
-
           const sc = new SecurityContext(principal)
           child.provide(SecurityContext, sc, true)
           child.provide(GQLEvent, e, true)
+
+          // seems like this should come later, but causes issues if so
+          await child.initialize('web', 'graphql')
+
 
           // automatically injected args!
           result = await targetResolver()
